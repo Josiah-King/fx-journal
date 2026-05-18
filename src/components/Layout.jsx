@@ -142,10 +142,6 @@ export default function Layout({ children }) {
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
-          <div className="bg-[#14141a] border border-[#1f1f2e] rounded-lg px-3 py-1.5 text-xs text-[#666]">
-            Target: <span className="text-[#c8f04a] font-medium">${dailyTarget}</span>
-          </div>
-          
           {/* Daily target badge */}
           <div className="bg-[#14141a] border border-[#1f1f2e] rounded-lg px-3 py-1.5 text-xs text-[#666]">
             Target: <span className="text-[#c8f04a] font-medium">${dailyTarget}</span>
