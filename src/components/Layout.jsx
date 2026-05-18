@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../supabase";
+import { useTheme } from "../context/ThemeContext";
+import { Sun, Moon } from "lucide-react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -27,6 +29,8 @@ export default function Layout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [dailyTarget, setDailyTarget] = useState("5.00");
+
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     async function fetchTarget() {
@@ -130,6 +134,18 @@ export default function Layout({ children }) {
             </p>
           </div>
 
+          <button
+            onClick={toggleTheme}
+            className="bg-[#14141a] border border-[#1f1f2e] rounded-lg p-1.5 text-[#666] hover:text-white transition-colors"
+            title="Toggle theme"
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+
+          <div className="bg-[#14141a] border border-[#1f1f2e] rounded-lg px-3 py-1.5 text-xs text-[#666]">
+            Target: <span className="text-[#c8f04a] font-medium">${dailyTarget}</span>
+          </div>
+          
           {/* Daily target badge */}
           <div className="bg-[#14141a] border border-[#1f1f2e] rounded-lg px-3 py-1.5 text-xs text-[#666]">
             Target: <span className="text-[#c8f04a] font-medium">${dailyTarget}</span>
