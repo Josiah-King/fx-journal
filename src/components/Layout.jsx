@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { supabase } from "../supabase";
 import { useTheme } from "../context/ThemeContext";
-import { Sun, Moon } from "lucide-react";
+import { supabase } from "../supabase";
 import {
   LayoutDashboard,
   BookOpen,
@@ -13,6 +12,8 @@ import {
   LogOut,
   Menu,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 const navItems = [
@@ -25,21 +26,19 @@ const navItems = [
 
 export default function Layout({ children }) {
   const { logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const [dailyTarget, setDailyTarget] = useState("5.00");
-
-  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     async function fetchTarget() {
-        const { data } = await supabase
-            .from("settings")
-            .select("value")
-            .eq("key", "daily_target")
-            .single();
-        if (data) setDailyTarget(parseFloat(data.value).toFixed(2));
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "daily_target")
+        .single();
+      if (data) setDailyTarget(parseFloat(data.value).toFixed(2));
     }
     fetchTarget();
   }, []);
@@ -50,26 +49,39 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0c0c0f] text-white flex font-mono">
+    <div className="min-h-screen font-mono" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        input, select, textarea {
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          border-color: var(--border-light);
+        }
+        input::placeholder, textarea::placeholder { color: var(--text-faint); }
+        select option { background: var(--bg-secondary); color: var(--text-primary); }
+      `}</style>
+
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-20 lg:hidden"
+          className="fixed inset-0 z-20 lg:hidden"
+          style={{ background: "rgba(0,0,0,0.6)" }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-56 bg-[#14141a] border-r border-[#1f1f2e] z-30 flex flex-col transition-transform duration-300
+        className={`fixed top-0 left-0 h-screen w-56 z-30 flex flex-col transition-transform duration-300
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+        style={{ background: "var(--bg-secondary)", borderRight: "0.5px solid var(--border)" }}
       >
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-[#1f1f2e]">
-          <h1 className="text-lg font-bold tracking-wider">
-            FX<span className="text-[#c8f04a]">LOG</span>
+        <div className="px-6 py-5" style={{ borderBottom: "0.5px solid var(--border)" }}>
+          <h1 className="text-lg font-bold tracking-wider" style={{ color: "var(--text-primary)" }}>
+            FX<span style={{ color: "var(--accent)" }}>LOG</span>
           </h1>
-          <p className="text-[#444] text-xs tracking-widest mt-0.5">
+          <p className="text-xs tracking-widest mt-0.5" style={{ color: "var(--text-muted)" }}>
             TRADE JOURNAL
           </p>
         </div>
@@ -83,13 +95,13 @@ export default function Layout({ children }) {
               end={to === "/"}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors
-                ${
-                  isActive
-                    ? "bg-[#1a1f0d] text-[#c8f04a] border border-[#c8f04a]/20"
-                    : "text-[#666] hover:text-white hover:bg-[#1f1f2e]"
-                }`
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${isActive ? "active-nav" : ""}`
               }
+              style={({ isActive }) => ({
+                background: isActive ? "var(--accent-dim)" : "transparent",
+                color: isActive ? "var(--accent)" : "var(--text-muted)",
+                border: isActive ? "1px solid color-mix(in srgb, var(--accent) 20%, transparent)" : "1px solid transparent",
+              })}
             >
               <Icon size={16} />
               {label}
@@ -98,10 +110,13 @@ export default function Layout({ children }) {
         </nav>
 
         {/* Logout */}
-        <div className="px-3 py-4 border-t border-[#1f1f2e]">
+        <div className="px-3 py-4" style={{ borderTop: "0.5px solid var(--border)" }}>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[#666] hover:text-[#f87171] hover:bg-[#2e0d0d] transition-colors w-full"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm w-full transition-colors"
+            style={{ color: "var(--text-muted)" }}
+            onMouseEnter={e => e.currentTarget.style.color = "var(--loss)"}
+            onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
           >
             <LogOut size={16} />
             Sign out
@@ -110,20 +125,24 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-56">
+      <div className="flex flex-col min-h-screen lg:ml-56">
         {/* Top bar */}
-        <header className="h-14 border-b border-[#1f1f2e] flex items-center px-4 gap-4 sticky top-0 bg-[#0c0c0f] z-10">
-          {/* Mobile menu button */}
+        <header
+          className="h-14 flex items-center px-4 gap-4 sticky top-0 z-10"
+          style={{ borderBottom: "0.5px solid var(--border)", background: "var(--bg-primary)" }}
+        >
+          {/* Mobile menu */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden text-[#666] hover:text-white transition-colors"
+            className="lg:hidden transition-colors"
+            style={{ color: "var(--text-muted)" }}
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          {/* Page title — dynamic */}
+          {/* Date */}
           <div className="flex-1">
-            <p className="text-xs text-[#555] uppercase tracking-widest">
+            <p className="text-xs uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
                 year: "numeric",
@@ -134,17 +153,22 @@ export default function Layout({ children }) {
             </p>
           </div>
 
+          {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="bg-[#14141a] border border-[#1f1f2e] rounded-lg p-1.5 text-[#666] hover:text-white transition-colors"
+            className="rounded-lg p-1.5 transition-colors"
+            style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border)", color: "var(--text-muted)" }}
             title="Toggle theme"
           >
             {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
-          {/* Daily target badge */}
-          <div className="bg-[#14141a] border border-[#1f1f2e] rounded-lg px-3 py-1.5 text-xs text-[#666]">
-            Target: <span className="text-[#c8f04a] font-medium">${dailyTarget}</span>
+          {/* Daily target */}
+          <div
+            className="rounded-lg px-3 py-1.5 text-xs"
+            style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border)", color: "var(--text-muted)" }}
+          >
+            Target: <span className="font-medium" style={{ color: "var(--accent)" }}>${dailyTarget}</span>
           </div>
         </header>
 
