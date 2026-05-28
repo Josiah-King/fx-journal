@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
-import { Plus, Trash2, X, Upload, Eye } from "lucide-react";
+import { Plus, X, Upload } from "lucide-react";
 
 function getTodayNairobi() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Nairobi" });
@@ -687,12 +687,6 @@ export default function TradeLog() {
     setLoading(false);
   }
 
-  async function deleteTrade(id) {
-    await supabase.from("trades").delete().eq("id", id);
-    setTrades((prev) => prev.filter((t) => t.id !== id));
-    if (viewTrade?.id === id) setViewTrade(null);
-  }
-
   function getInstrumentName(id) { return instruments.find((i) => i.id === id)?.name || "—"; }
   function getSessionName(id) { return sessions.find((s) => s.id === id)?.name || "—"; }
 
@@ -888,13 +882,6 @@ export default function TradeLog() {
                     style={{ background: "var(--accent-dim)", color: "var(--accent)", border: "0.5px solid color-mix(in srgb, var(--accent) 20%, transparent)" }}
                   >
                     Edit
-                  </button>
-                  <button
-                    onClick={() => deleteTrade(trade.id)}
-                    className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
-                    style={{ background: "var(--loss-dim)", color: "var(--loss)", border: "0.5px solid color-mix(in srgb, var(--loss) 20%, transparent)" }}
-                  >
-                    Delete
                   </button>
                 </div>
               </div>
