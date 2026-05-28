@@ -151,32 +151,23 @@ function TradeForm({ onClose, onSaved, editTrade }) {
   const [rules, setRules] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const today = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    timeZone: "Africa/Nairobi",
-  });
-
   const [form, setForm] = useState({
     date: getTodayNairobi(),
-    day: today,
     instrument_id: "",
     session_id: "",
-    no_of_trades: 1,
-    lot_size: "",
-    initial_capital: "",
     pnl: "",
-    outcome: "Win",
-    trade_type: "Long",
+    outcome: "",
+    trade_type: "",
     setup_id: "",
-    daily_target: "",
-    target_achieved: "Yes",
-    followed_plan: "Yes",
+    target_achieved: "",
+    followed_plan: "",
     plan_notes: "",
     notes: "",
     improvement_areas: "",
     overall_feedback: "",
     chart_before: "",
     chart_after: "",
+    chart_other: "",
     selectedEmotions: [],
     rulesFollowed: {},
   });
@@ -184,20 +175,18 @@ function TradeForm({ onClose, onSaved, editTrade }) {
   useEffect(() => { fetchFormData(); }, []);
 
   async function fetchFormData() {
-    const [ins, ses, set, emo, rul, cfg] = await Promise.all([
+    const [ins, ses, set, emo, rul] = await Promise.all([
       supabase.from("instruments").select("*").order("created_at"),
       supabase.from("sessions").select("*").order("created_at"),
       supabase.from("setups").select("*").order("created_at"),
       supabase.from("emotions").select("*").order("created_at"),
       supabase.from("rules").select("*").order("created_at"),
-      supabase.from("settings").select("*"),
     ]);
     setInstruments(ins.data || []);
     setSessions(ses.data || []);
     setSetups(set.data || []);
     setEmotions(emo.data || []);
     setRules(rul.data || []);
-    const target = cfg.data?.find((d) => d.key === "daily_target")?.value || "5";
     const rulesMap = Object.fromEntries((rul.data || []).map((r) => [r.id, true]));
 
     if (editTrade) {
@@ -208,16 +197,16 @@ function TradeForm({ onClose, onSaved, editTrade }) {
       const selectedEmotions = (existingEmotions.data || []).map((e) => e.emotion_id);
       const rulesFollowed = { ...rulesMap };
       (existingRules.data || []).forEach((r) => { rulesFollowed[r.rule_id] = r.followed; });
-      setForm((f) => ({ ...f, ...editTrade, daily_target: editTrade.daily_target || target, selectedEmotions, rulesFollowed }));
+      setForm((f) => ({
+        ...f,
+        ...editTrade,
+        selectedEmotions,
+        rulesFollowed,
+      }));
     } else {
       setForm((f) => ({
         ...f,
-        instrument_id: ins.data?.[0]?.id || "",
-        session_id: ses.data?.[0]?.id || "",
-        setup_id: set.data?.[0]?.id || "",
-        daily_target: target,
         rulesFollowed: rulesMap,
-        selectedEmotions: [],
       }));
     }
   }
@@ -236,29 +225,31 @@ function TradeForm({ onClose, onSaved, editTrade }) {
   }
 
   async function handleSave() {
-    if (!form.lot_size || !form.initial_capital || !form.pnl) return;
+    if (!form.pnl || !form.outcome || !form.trade_type) return;
     setSaving(true);
+
     const tradeData = {
       date: form.date,
       day: new Date(form.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" }),
-      instrument_id: form.instrument_id,
-      session_id: form.session_id,
-      no_of_trades: form.no_of_trades,
-      lot_size: parseFloat(form.lot_size),
-      initial_capital: parseFloat(form.initial_capital),
+      instrument_id: form.instrument_id || null,
+      session_id: form.session_id || null,
+      no_of_trades: 1,
+      lot_size: 0,
+      initial_capital: 0,
       pnl: parseFloat(form.pnl),
       outcome: form.outcome,
       trade_type: form.trade_type,
       setup_id: form.setup_id || null,
-      daily_target: parseFloat(form.daily_target),
-      target_achieved: form.target_achieved,
-      followed_plan: form.followed_plan,
+      daily_target: 0,
+      target_achieved: form.target_achieved || null,
+      followed_plan: form.followed_plan || null,
       plan_notes: form.plan_notes,
       notes: form.notes,
       improvement_areas: form.improvement_areas,
       overall_feedback: form.overall_feedback,
       chart_before: form.chart_before,
       chart_after: form.chart_after,
+      chart_other: form.chart_other,
     };
 
     let tradeId;
@@ -296,39 +287,45 @@ function TradeForm({ onClose, onSaved, editTrade }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 px-4" style={{ background: "rgba(0,0,0,0.7)" }}>
       <div className="rounded-2xl w-full max-w-2xl" style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border)" }}>
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "0.5px solid var(--border)" }}>
           <h2 className="text-sm font-semibold uppercase tracking-widest" style={{ color: "var(--text-primary)" }}>
             {editTrade ? "Edit Trade" : "Log New Trade"}
           </h2>
-          <button onClick={onClose} style={{ color: "var(--text-muted)" }}>
-            <X size={18} />
-          </button>
+          <button onClick={onClose} style={{ color: "var(--text-muted)" }}><X size={18} /></button>
         </div>
 
         <div className="px-6 py-5 space-y-6">
-          {/* 01 Basic Info */}
+
+          {/* 01 — Basic Info */}
           <div>
             <p className="text-xs uppercase tracking-widest mb-4 font-semibold" style={{ color: "var(--accent)" }}>
               01 — Basic Info
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Date</Label><Input type="date" value={f.date} onChange={(e) => set_("date", e.target.value)} /></div>
+              <div>
+                <Label>Date</Label>
+                <Input type="date" value={f.date} onChange={(e) => set_("date", e.target.value)} />
+              </div>
               <div>
                 <Label>Instrument</Label>
                 <Select value={f.instrument_id} onChange={(e) => set_("instrument_id", e.target.value)}>
+                  <option value="">— Select —</option>
                   {instruments.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </Select>
               </div>
               <div>
                 <Label>Session</Label>
                 <Select value={f.session_id} onChange={(e) => set_("session_id", e.target.value)}>
+                  <option value="">— Select —</option>
                   {sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </div>
               <div>
                 <Label>Trade Type</Label>
                 <Select value={f.trade_type} onChange={(e) => set_("trade_type", e.target.value)}>
+                  <option value="">— Select —</option>
                   <option>Long</option>
                   <option>Short</option>
                 </Select>
@@ -336,40 +333,50 @@ function TradeForm({ onClose, onSaved, editTrade }) {
               <div>
                 <Label>Setup</Label>
                 <Select value={f.setup_id} onChange={(e) => set_("setup_id", e.target.value)}>
-                  <option value="">— Select setup —</option>
+                  <option value="">— Select —</option>
                   {setups.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </div>
-              <div><Label>No. of Trades</Label><Input type="number" min="1" value={f.no_of_trades} onChange={(e) => set_("no_of_trades", e.target.value)} /></div>
+              <div>
+                <Label>Outcome</Label>
+                <Select value={f.outcome} onChange={(e) => set_("outcome", e.target.value)}>
+                  <option value="">— Select —</option>
+                  <option>Win</option>
+                  <option>Loss</option>
+                  <option>Break-even</option>
+                </Select>
+              </div>
             </div>
           </div>
 
-          {/* 02 Financials */}
+          {/* 02 — Financials */}
           <div>
             <p className="text-xs uppercase tracking-widest mb-4 font-semibold" style={{ color: "var(--accent)" }}>
               02 — Financials
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Initial Capital ($)</Label><Input type="number" placeholder="e.g. 500" value={f.initial_capital} onChange={(e) => set_("initial_capital", e.target.value)} /></div>
-              <div><Label>Lot Size</Label><Input type="number" step="0.01" placeholder="e.g. 0.01" value={f.lot_size} onChange={(e) => set_("lot_size", e.target.value)} /></div>
-              <div><Label>P&L ($)</Label><Input type="number" placeholder="e.g. 12.50 or -5" value={f.pnl} onChange={(e) => set_("pnl", e.target.value)} /></div>
               <div>
-                <Label>Outcome</Label>
-                <Select value={f.outcome} onChange={(e) => set_("outcome", e.target.value)}>
-                  <option>Win</option><option>Loss</option><option>Break-even</option>
-                </Select>
+                <Label>P&L ($)</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 12.50 or -5"
+                  value={f.pnl}
+                  onChange={(e) => set_("pnl", e.target.value)}
+                />
               </div>
-              <div><Label>Daily Target ($)</Label><Input type="number" value={f.daily_target} onChange={(e) => set_("daily_target", e.target.value)} /></div>
               <div>
                 <Label>Target Achieved?</Label>
                 <Select value={f.target_achieved} onChange={(e) => set_("target_achieved", e.target.value)}>
-                  <option>Yes</option><option>No</option><option>Partial</option>
+                  <option value="">— Select —</option>
+                  <option>Yes</option>
+                  <option>No</option>
+                  <option>Partial</option>
                 </Select>
               </div>
             </div>
           </div>
 
-          {/* 03 Discipline */}
+          {/* 03 — Discipline & Emotions */}
           <div>
             <p className="text-xs uppercase tracking-widest mb-4 font-semibold" style={{ color: "var(--accent)" }}>
               03 — Discipline & Emotions
@@ -378,7 +385,10 @@ function TradeForm({ onClose, onSaved, editTrade }) {
               <div>
                 <Label>Followed Plan?</Label>
                 <Select value={f.followed_plan} onChange={(e) => set_("followed_plan", e.target.value)}>
-                  <option>Yes</option><option>Partially</option><option>No</option>
+                  <option value="">— Select —</option>
+                  <option>Yes</option>
+                  <option>Partially</option>
+                  <option>No</option>
                 </Select>
               </div>
 
@@ -397,7 +407,7 @@ function TradeForm({ onClose, onSaved, editTrade }) {
                         }}
                       >
                         <div
-                          className="w-4 h-4 rounded flex items-center justify-center mt-0.5 flex-shrink-0 transition-colors"
+                          className="w-4 h-4 rounded flex items-center justify-center mt-0.5 flex-shrink-0"
                           style={{
                             background: f.rulesFollowed[rule.id] ? "var(--accent)" : "transparent",
                             border: `1.5px solid ${f.rulesFollowed[rule.id] ? "var(--accent)" : "var(--text-muted)"}`,
@@ -410,7 +420,9 @@ function TradeForm({ onClose, onSaved, editTrade }) {
                           )}
                         </div>
                         <span className="text-xs leading-relaxed" style={{ color: f.rulesFollowed[rule.id] ? "var(--text-primary)" : "var(--text-muted)" }}>
-                          <span className="font-bold mr-2" style={{ color: "var(--accent)" }}>{String(i + 1).padStart(2, "0")}</span>
+                          <span className="font-bold mr-2" style={{ color: "var(--accent)" }}>
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
                           {rule.description}
                         </span>
                       </div>
@@ -419,7 +431,14 @@ function TradeForm({ onClose, onSaved, editTrade }) {
                 </div>
               )}
 
-              <div><Label>Plan Notes</Label><Textarea placeholder="Explain any deviations from your plan..." value={f.plan_notes} onChange={(e) => set_("plan_notes", e.target.value)} /></div>
+              <div>
+                <Label>Plan Notes</Label>
+                <Textarea
+                  placeholder="Explain any deviations from your plan..."
+                  value={f.plan_notes}
+                  onChange={(e) => set_("plan_notes", e.target.value)}
+                />
+              </div>
 
               {emotions.length > 0 && (
                 <div>
@@ -429,7 +448,7 @@ function TradeForm({ onClose, onSaved, editTrade }) {
                       <button
                         key={emo.id}
                         onClick={() => toggleEmotion(emo.id)}
-                        className="px-3 py-1.5 rounded-lg text-xs border transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-xs transition-colors"
                         style={{
                           background: f.selectedEmotions.includes(emo.id) ? "var(--accent-dim)" : "var(--bg-tertiary)",
                           border: `0.5px solid ${f.selectedEmotions.includes(emo.id) ? "color-mix(in srgb, var(--accent) 20%, transparent)" : "var(--border-light)"}`,
@@ -445,26 +464,60 @@ function TradeForm({ onClose, onSaved, editTrade }) {
             </div>
           </div>
 
-          {/* 04 Charts */}
+          {/* 04 — Charts */}
           <div>
             <p className="text-xs uppercase tracking-widest mb-4 font-semibold" style={{ color: "var(--accent)" }}>
               04 — Charts
             </p>
-            <div className="grid grid-cols-2 gap-4">
-              <ChartUpload label="Chart Before Entry" value={f.chart_before} onChange={(url) => set_("chart_before", url)} />
-              <ChartUpload label="Chart After Entry" value={f.chart_after} onChange={(url) => set_("chart_after", url)} />
+            <div className="grid grid-cols-3 gap-4">
+              <ChartUpload
+                label="Before Entry"
+                value={f.chart_before}
+                onChange={(url) => set_("chart_before", url)}
+              />
+              <ChartUpload
+                label="After Entry"
+                value={f.chart_after}
+                onChange={(url) => set_("chart_after", url)}
+              />
+              <ChartUpload
+                label="Any Other"
+                value={f.chart_other}
+                onChange={(url) => set_("chart_other", url)}
+              />
             </div>
           </div>
 
-          {/* 05 Notes */}
+          {/* 05 — Notes & Reflection */}
           <div>
             <p className="text-xs uppercase tracking-widest mb-4 font-semibold" style={{ color: "var(--accent)" }}>
               05 — Notes & Reflection
             </p>
             <div className="space-y-4">
-              <div><Label>Trade Notes</Label><Textarea placeholder="Why it worked / didn't / why you missed it..." value={f.notes} onChange={(e) => set_("notes", e.target.value)} /></div>
-              <div><Label>Areas of Improvement</Label><Textarea placeholder="What would you do differently?" value={f.improvement_areas} onChange={(e) => set_("improvement_areas", e.target.value)} /></div>
-              <div><Label>Overall Feedback</Label><Textarea placeholder="General thoughts on this trade..." value={f.overall_feedback} onChange={(e) => set_("overall_feedback", e.target.value)} /></div>
+              <div>
+                <Label>Trade Notes</Label>
+                <Textarea
+                  placeholder="Why it worked / didn't / why you missed it..."
+                  value={f.notes}
+                  onChange={(e) => set_("notes", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Areas of Improvement</Label>
+                <Textarea
+                  placeholder="What would you do differently?"
+                  value={f.improvement_areas}
+                  onChange={(e) => set_("improvement_areas", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Overall Feedback</Label>
+                <Textarea
+                  placeholder="General thoughts on this trade..."
+                  value={f.overall_feedback}
+                  onChange={(e) => set_("overall_feedback", e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
